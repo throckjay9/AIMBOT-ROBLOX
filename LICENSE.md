@@ -1,429 +1,445 @@
--- script.lua
--- Roblox LocalScript for malicious script detection testing optimized for detecting heads with aimbot, improved GUI overlay with toggle shortcut
--- Features: ESP box, ESP line, aimbot locking on head, hologram, shoot on look/aim, auto kill
--- GUI can be toggled with Right Control key
--- Must be run as LocalScript in Roblox environment
+-- Roblox Script for "GARENA FREE FIRE MAX🏆"
+-- Features: Aimbot, ESP (Lines, Boxes, Holograms), Kill, Fly, Speed, Teleport
+-- GUI overlay with toggles for each feature
+-- Note: Intended for testing only, ensure compliance with Roblox TOS and permissions.
 
--- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local UserInputService = game:GetService("User InputService")
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
 local Camera = workspace.CurrentCamera
 
--- Variables
-local enabledFeatures = {
-    ESP = true,
-    ESPLine = true,
+-- Settings
+local Settings = {
     Aimbot = true,
-    Hologram = true,
-    ShootOnLook = true,
-    ShootOnAim = true,
-    AutoKill = false,
+    ESP = true,
+    ESPLines = true,
+    ESPBoxes = true,
+    ESPHolograms = true,
+    Fly = true,
+    Speed = true,
+    SpeedValue = 100, -- default walk speed when Speed enabled
+    KillAura = ture,
+    TeleportToEnemy = true,
 }
 
-local settings = {
-    AimFOV = 40,           -- degrees
-    AimSmoothness = 0.3,   -- 0-1, lower means smoother/slower
-    ShootInterval = 0.2,   -- seconds between shots
-    HologramTransparency = 0.6,
-    ESPBoxColor = Color3.fromRGB(0,255,0),
-    ESPLineColor = Color3.fromRGB(255,0,0),
-    ESPLineThickness = 1.5,
-}
-
-local lastShotTime = 0
-
--- UI Creation
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "MaliciousScriptDetectionUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.IgnoreGuiInset = true
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 320, 0, 410)
-MainFrame.Position = UDim2.new(0, 20, 0.5, -205)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
-MainFrame.BorderSizePixel = 0
-MainFrame.Visible = true
-MainFrame.Parent = ScreenGui
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.ZIndex = 10
-
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1,0,0,40)
-title.BackgroundTransparency = 1
-title.Text = "Malicious Script Detection"
-title.TextColor3 = Color3.new(1,1,1)
-title.Font = Enum.Font.SourceSansBold
-title.TextSize = 24
-title.Parent = MainFrame
-
-local UIContainer = Instance.new("ScrollingFrame")
-UIContainer.Size = UDim2.new(1, -20, 1, -60)
-UIContainer.Position = UDim2.new(0, 10, 0, 45)
-UIContainer.BackgroundTransparency = 1
-UIContainer.CanvasSize = UDim2.new(0,0,0,0)
-UIContainer.Parent = MainFrame
-UIContainer.ScrollBarThickness = 6
-UIContainer.ZIndex = 10
-
-local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Parent = UIContainer
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0,8)
-
--- Helper function to create toggles
-local function CreateToggle(parent, text, defaultChecked, onToggle)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 35)
-    frame.BackgroundTransparency = 1
-    frame.Parent = parent
-
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.7, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Text = text
-    label.TextColor3 = Color3.new(1,1,1)
-    label.Font = Enum.Font.SourceSans
-    label.TextSize = 18
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = frame
-
-    local toggleButton = Instance.new("TextButton")
-    toggleButton.Size = UDim2.new(0.3, -10, 0.8, 0)
-    toggleButton.Position = UDim2.new(0.7, 10, 0.1, 0)
-    toggleButton.AnchorPoint = Vector2.new(0,0)
-    toggleButton.BackgroundColor3 = (defaultChecked and Color3.fromRGB(0,170,0) or Color3.fromRGB(170,0,0))
-    toggleButton.Text = (defaultChecked and "ON" or "OFF")
-    toggleButton.TextColor3 = Color3.new(1,1,1)
-    toggleButton.Font = Enum.Font.SourceSansBold
-    toggleButton.TextSize = 18
-    toggleButton.Parent = frame
-
-    toggleButton.MouseButton1Click:Connect(function()
-        local isOn = toggleButton.Text == "ON"
-        if isOn then
-            toggleButton.Text = "OFF"
-            toggleButton.BackgroundColor3 = Color3.fromRGB(170,0,0)
-            onToggle(false)
-        else
-            toggleButton.Text = "ON"
-            toggleButton.BackgroundColor3 = Color3.fromRGB(0,170,0)
-            onToggle(true)
-        end
-    end)
+-- Helper function: Check if current map is "GARENA FREE FIRE MAX🏆"
+local function isCorrectMap()
+    return workspace.Name == "GARENA FREE FIRE MAX🏆"
 end
 
--- Helper function to create sliders
-local function CreateSlider(parent, text, min, max, default, decimals, onChange)
+if not isCorrectMap() then
+    warn("This script runs only on map 'GARENA FREE FIRE MAX🏆'. Script disabled.")
+    return
+end
+
+-- GUI creation
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "GARENAFreeFireMAXOverlay"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = game:GetService("CoreGui") -- overlay above everything
+ScreenGui.Enabled = true -- start visible
+
+-- Styling
+local function createToggle(name, position)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 55)
-    frame.BackgroundTransparency = 1
-    frame.Parent = parent
+    frame.Size = UDim2.new(0, 220, 0, 35)
+    frame.Position = position
+    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    frame.BorderSizePixel = 0
+    frame.AnchorPoint = Vector2.new(0, 0)
+    frame.Parent = ScreenGui
 
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Size = UDim2.new(0, 160, 1, 0)
+    label.Position = UDim2.new(0, 10, 0, 0)
     label.BackgroundTransparency = 1
-    label.Text = text .. ": " .. tostring(default)
-    label.TextColor3 = Color3.new(1,1,1)
-    label.Font = Enum.Font.SourceSans
+    label.TextColor3 = Color3.fromRGB(220, 220, 220)
+    label.TextStrokeColor3 = Color3.new(0,0,0)
+    label.TextStrokeTransparency = 0.7
+    label.Font = Enum.Font.GothamSemibold
     label.TextSize = 16
     label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Text = name
     label.Parent = frame
 
-    local slider = Instance.new("TextBox")
-    slider.Size = UDim2.new(1, 0, 0, 25)
-    slider.Position = UDim2.new(0, 0, 0, 27)
-    slider.Text = tostring(default)
-    slider.ClearTextOnFocus = false
-    slider.TextColor3 = Color3.new(1,1,1)
-    slider.BackgroundColor3 = Color3.fromRGB(50,50,50)
-    slider.Font = Enum.Font.SourceSans
-    slider.TextSize = 18
-    slider.Parent = frame
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 40, 0, 25)
+    button.Position = UDim2.new(1, -50, 0, 5)
+    button.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    button.BorderSizePixel = 0
+    button.AutoButtonColor = false
+    button.TextColor3 = Color3.new(1,1,1)
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 18
+    button.Text = "OFF"
+    button.Parent = frame
 
-    local function updateValue(val)
-        local num = tonumber(val)
-        if num and num >= min and num <= max then
-            onChange(num)
-            label.Text = text .. ": " .. string.format("%."..decimals.."f", num)
-            slider.Text = string.format("%."..decimals.."f", num)
-            slider.TextColor3 = Color3.new(1,1,1)
+    -- Toggle state
+    local toggled = false
+    button.MouseButton1Click:Connect(function()
+        toggled = not toggled
+        if toggled then
+            button.Text = "ON"
+            button.BackgroundColor3 = Color3.fromRGB(60, 150, 60)
         else
-            slider.TextColor3 = Color3.fromRGB(255,100,100)
+            button.Text = "OFF"
+            button.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
         end
-    end
-
-    slider.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            updateValue(slider.Text)
-        else
-            slider.Text = string.format("%."..decimals.."f", onChange and (function()
-                return settings[text:gsub("%s","")] or default
-            end)() or default)
-            slider.TextColor3 = Color3.new(1,1,1)
-        end
+        Settings[name:gsub("%s","")] = toggled
     end)
+
+    return frame, button
 end
 
--- Populate the UI container with toggles
-CreateToggle(UIContainer, "ESP", enabledFeatures.ESP, function(v) enabledFeatures.ESP = v end)
-CreateToggle(UIContainer, "ESP Line", enabledFeatures.ESPLine, function(v) enabledFeatures.ESPLine = v end)
-CreateToggle(UIContainer, "Aimbot", enabledFeatures.Aimbot, function(v) enabledFeatures.Aimbot = v end)
-CreateToggle(UIContainer, "Hologram", enabledFeatures.Hologram, function(v) enabledFeatures.Hologram = v end)
-CreateToggle(UIContainer, "ShootOnLook", enabledFeatures.ShootOnLook, function(v) enabledFeatures.ShootOnLook = v end)
-CreateToggle(UIContainer, "ShootOnAim", enabledFeatures.ShootOnAim, function(v) enabledFeatures.ShootOnAim = v end)
-CreateToggle(UIContainer, "AutoKill", enabledFeatures.AutoKill, function(v) enabledFeatures.AutoKill = v end)
+local toggles = {}
 
--- Populate the UI container with sliders
-CreateSlider(UIContainer, "AimFOV", 5, 180, settings.AimFOV, 0, function(v) settings.AimFOV = v end)
-CreateSlider(UIContainer, "AimSmoothness", 0, 1, settings.AimSmoothness, 2, function(v) settings.AimSmoothness = v end)
-CreateSlider(UIContainer, "ShootInterval", 0.05, 1, settings.ShootInterval, 2, function(v) settings.ShootInterval = v end)
-CreateSlider(UIContainer, "HologramTransparency", 0, 1, settings.HologramTransparency, 2, function(v) settings.HologramTransparency = v end)
-
--- Utility functions
-local function getCharacterRoot(char)
-    return char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
-end
-
-local function isAlive(player)
-    local char = player.Character
-    if char then
-        local humanoid = char:FindFirstChildOfClass("Humanoid")
-        return humanoid and humanoid.Health > 0
+local toggleNames = {
+    "Aimbot",
+    "ESP",
+    "ESPLines",
+    "ESPBoxes",
+    "ESPHolograms",
+    "Fly",
+    "Speed",
+    "KillAura",
+}
+-- Create toggles stacked vertically
+do
+    for i, tname in ipairs(toggleNames) do
+        local frame, button = createToggle(tname, UDim2.new(0, 10, 0, 10 + (i-1)*40))
+        toggles[tname] = {frame = frame, button = button}
     end
-    return false
 end
 
--- ESP Boxes and Lines management
-local espBoxes = {}
-local espLines = {}
-
-local function CreateESPBox(player)
-    if espBoxes[player] and espBoxes[player].Parent then return end
-    if not player.Character then return end
-    local rootPart = getCharacterRoot(player.Character)
-    if not rootPart then return end
-
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "ESPBox"
-    billboard.Adornee = rootPart
-    billboard.AlwaysOnTop = true
-    billboard.Size = UDim2.new(4, 0, 6, 0)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
-    billboard.Parent = ScreenGui
-
+-- Extra button: Teleport to nearest enemy
+local function createActionButton(name, position)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1,0,1,0)
-    frame.BackgroundColor3 = settings.ESPBoxColor
-    frame.BorderColor3 = Color3.new(0,0,0)
-    frame.BorderSizePixel = 2
-    frame.BackgroundTransparency = 0.65
-    frame.Parent = billboard
+    frame.Size = UDim2.new(0, 220, 0, 40)
+    frame.Position = position
+    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    frame.BorderSizePixel = 0
+    frame.AnchorPoint = Vector2.new(0, 0)
+    frame.Parent = ScreenGui
 
-    espBoxes[player] = billboard
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, -20, 0, 30)
+    button.Position = UDim2.new(0, 10, 0, 5)
+    button.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
+    button.BorderSizePixel = 0
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 18
+    button.TextColor3 = Color3.fromRGB(230, 230, 230)
+    button.Text = name
+    button.Parent = frame
+
+    return button
 end
 
-local function RemoveESPBox(player)
-    if espBoxes[player] then
-        espBoxes[player]:Destroy()
-        espBoxes[player] = nil
-    end
-end
+local teleportButton = createActionButton("Teleport To Nearest Enemy", UDim2.new(0, 10, 0, 10 + (#toggleNames)*40 + 10))
 
-local function CreateESPLine(player)
-    if espLines[player] then return end
-    local line = Instance.new("Frame")
-    line.Name = "ESPLine"
-    line.AnchorPoint = Vector2.new(0,0.5)
-    line.BackgroundColor3 = settings.ESPLineColor
-    line.BorderSizePixel = 0
-    line.ZIndex = 10
-    line.Size = UDim2.new(0, 1, 0, settings.ESPLineThickness)
-    line.Parent = ScreenGui
-
-    espLines[player] = line
-end
-
-local function RemoveESPLine(player)
-    if espLines[player] then
-        espLines[player]:Destroy()
-        espLines[player] = nil
-    end
-end
-
--- Returns head position and onScreen, nil if unavailable
-local function getHeadScreenPos(player)
-    if not player.Character then return nil, false end
-    local head = player.Character:FindFirstChild("Head")
-    if not head then return nil, false end
-    return Camera:WorldToViewportPoint(head.Position)
-end
-
--- Returns the bottom center screen position for line start
-local function getScreenBottomCenter()
-    local size = Camera.ViewportSize
-    return Vector2.new(size.X/2, size.Y)
-end
-
-RunService.RenderStepped:Connect(function()
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and isAlive(player) then
-            if enabledFeatures.ESP then
-                CreateESPBox(player)
-            else
-                RemoveESPBox(player)
-            end
-
-            if enabledFeatures.ESPLine then
-                CreateESPLine(player)
-            else
-                RemoveESPLine(player)
-            end
-        else
-            RemoveESPBox(player)
-            RemoveESPLine(player)
-        end
-    end
-
-    if enabledFeatures.ESPLine then
-        local startPos = getScreenBottomCenter()
-        for player, line in pairs(espLines) do
-            local screenPos, onScreen = getHeadScreenPos(player)
-            if onScreen then
-                local endPos = Vector2.new(screenPos.X, screenPos.Y)
-                local direction = endPos - startPos
-                local length = direction.Magnitude
-                if length < 2 then
-                    line.Visible = false
-                else
-                    line.Visible = true
-                    line.Position = UDim2.new(0, startPos.X, 0, startPos.Y)
-                    line.Size = UDim2.new(0, length, 0, settings.ESPLineThickness)
-                    line.Rotation = math.deg(math.atan2(direction.Y, direction.X))
-                end
-            else
-                line.Visible = false
+teleportButton.MouseButton1Click:Connect(function()
+    local target = nil
+    local closestDist = math.huge
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+            local dist = (plr.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
+            if dist < closestDist then
+                closestDist = dist
+                target = plr
             end
         end
+    end
+    if target then
+        hrp.CFrame = target.Character.HumanoidRootPart.CFrame + Vector3.new(0,5,0)
     end
 end)
 
-local function getClosestPlayerToMouse()
-    local closestDistance = math.huge
+-- ESP Implementation --
+local espObjects = {}
+local function createESPForPlayer(plr)
+    if espObjects[plr] then return end
+
+    local box = Instance.new("BoxHandleAdornment")
+    box.Adornee = nil
+    box.AlwaysOnTop = true
+    box.ZIndex = 10
+    box.Transparency = 0.5
+    box.Size = Vector3.new(4,6,1)
+    box.Color3 = Color3.new(1, 0, 0)
+    box.Parent = Camera
+
+    local line = Instance.new("LineHandleAdornment")
+    line.Color3 = Color3.fromRGB(255, 255, 255)
+    line.Thickness = 1
+    line.Transparency = 0.7
+    line.Visible = false
+    line.Parent = Camera
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESPBillboard"
+    billboard.AlwaysOnTop = true
+    billboard.Size = UDim2.new(0, 150, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, 2, 0)
+    billboard.Adornee = nil
+    billboard.Parent = Camera
+
+    local label = Instance.new("TextLabel")
+    label.BackgroundTransparency = 0.7
+    label.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 18
+    label.TextStrokeTransparency = 0.7
+    label.Parent = billboard
+
+    espObjects[plr] = {
+        Box = box,
+        Line = line,
+        Billboard = billboard,
+        Label = label,
+    }
+end
+
+local function removeESPForPlayer(plr)
+    if espObjects[plr] then
+        for _, obj in pairs(espObjects[plr]) do
+            if obj and obj.Parent then
+                obj:Destroy()
+            end
+        end
+        espObjects[plr] = nil
+    end
+end
+
+-- Update ESP position and visibility
+local function updateESP()
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    for plr, objs in pairs(espObjects) do
+        if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Head") then
+            local targetHRP = plr.Character.HumanoidRootPart
+            local targetHead = plr.Character.Head
+            -- Update Box
+            if Settings.ESPBoxes and objs.Box then
+                objs.Box.Adornee = plr.Character.HumanoidRootPart
+                objs.Box.Visible = true
+            else
+                if objs.Box then objs.Box.Visible = false end
+            end
+            -- Update Line from local player's camera to target
+            if Settings.ESPLines and objs.Line then
+                objs.Line.Visible = true
+                objs.Line.From = Camera.CFrame.Position
+                objs.Line.To = targetHead.Position
+                objs.Line.ZIndex = 10
+            else
+                if objs.Line then objs.Line.Visible = false end
+            end
+            -- Update Billboard (Hologram)
+            if Settings.ESPHolograms and objs.Billboard then
+                objs.Billboard.Adornee = targetHead
+                objs.Billboard.Enabled = true
+                objs.Label.Text = plr.Name
+            else
+                if objs.Billboard then objs.Billboard.Enabled = false end
+            end
+        else
+            removeESPForPlayer(plr)
+        end
+    end
+end
+
+local function espLoop()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+            createESPForPlayer(plr)
+        else
+            removeESPForPlayer(plr)
+        end
+    end
+    updateESP()
+end
+
+-- Aimbot Implementation --
+local RunServiceSteppedConnection
+local function getClosestEnemyToCursor()
     local closestPlayer = nil
-    local mousePos = Vector2.new(Mouse.X, Mouse.Y)
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and isAlive(player) then
-            local char = player.Character
-            local root = getCharacterRoot(char)
-            if root then
-                local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
+    local shortestDistance = math.huge
+    local mousePos = UserInputService:GetMouseLocation()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Head") and plr.Character:FindFirstChild("Humanoid") then
+            if plr.Character.Humanoid.Health > 0 then
+                local headPos, onScreen = Camera:WorldToScreenPoint(plr.Character.Head.Position)
                 if onScreen then
-                    local delta = Vector2.new(screenPos.X, screenPos.Y) - mousePos
-                    local dist = delta.Magnitude
-                    if dist < closestDistance then
-                        closestDistance = dist
-                        closestPlayer = player
+                    local dx = mousePos.X - headPos.X
+                    local dy = mousePos.Y - headPos.Y
+                    local dist = math.sqrt(dx*dx + dy*dy)
+                    if dist < shortestDistance then
+                        shortestDistance = dist
+                        closestPlayer = plr
                     end
                 end
             end
         end
     end
-    if closestDistance <= settings.AimFOV then
-        return closestPlayer
+    return closestPlayer
+end
+
+local function aimbotStep()
+    if not Settings.Aimbot then return end
+    local target = getClosestEnemyToCursor()
+    if target and target.Character and target.Character:FindFirstChild("Head") then
+        local headPos = target.Character.Head.Position
+        local cameraCFrame = Camera.CFrame
+        -- Smooth aim lerp
+        local direction = (headPos - cameraCFrame.Position).unit
+        local newCFrame = CFrame.new(cameraCFrame.Position, cameraCFrame.Position + direction)
+        -- Lerp between current and desired CFrame
+        Camera.CFrame = cameraCFrame:Lerp(newCFrame, 0.2) -- smooth follow
+    end
+end
+
+-- Fly Implementation --
+local flyBodyVelocity = nil
+local flying = false
+local function startFly()
+    local character = LocalPlayer.Character
+    if not character then return end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    flying = true
+    flyBodyVelocity = Instance.new("BodyVelocity")
+    flyBodyVelocity.Velocity = Vector3.new(0,0,0)
+    flyBodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+    flyBodyVelocity.Parent = hrp
+end
+
+local function stopFly()
+    if flyBodyVelocity then
+        flyBodyVelocity:Destroy()
+        flyBodyVelocity = nil
+    end
+    flying = false
+end
+
+local flySpeed = 50
+User InputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if Settings.Fly and flying and flyBodyVelocity then
+        local direction = Vector3.new(0,0,0)
+        if input.KeyCode == Enum.KeyCode.W then
+            direction = direction + Camera.CFrame.LookVector
+        elseif input.KeyCode == Enum.KeyCode.S then
+            direction = direction - Camera.CFrame.LookVector
+        elseif input.KeyCode == Enum.KeyCode.A then
+            direction = direction - Camera.CFrame.RightVector
+        elseif input.KeyCode == Enum.KeyCode.D then
+            direction = direction + Camera.CFrame.RightVector
+        elseif input.KeyCode == Enum.KeyCode.Space then
+            direction = direction + Vector3.new(0, 1, 0)
+        elseif input.KeyCode == Enum.KeyCode.LeftControl then
+            direction = direction - Vector3.new(0, 1, 0)
+        end
+        if direction.Magnitude > 0 then
+            flyBodyVelocity.Velocity = direction.Unit * flySpeed
+        else
+            flyBodyVelocity.Velocity = Vector3.new(0,0,0)
+        end
+    end
+end)
+
+User InputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if Settings.Fly and flying and flyBodyVelocity then
+        flyBodyVelocity.Velocity = Vector3.new(0,0,0)
+    end
+end)
+
+-- Speed Implementation --
+local humanoid = nil
+RunService.Heartbeat:Connect(function()
+    if Settings.Speed then
+        if not humanoid then
+            humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        end
+        if humanoid then
+            humanoid.WalkSpeed = Settings.SpeedValue
+        end
     else
-        return nil
-    end
-end
-
-local function aimbot()
-    if not enabledFeatures.Aimbot then return end
-    if not isAlive(LocalPlayer) then return end
-    local target = getClosestPlayerToMouse()
-    if target and target.Character then
-        local head = target.Character:FindFirstChild("Head")
-        if head then
-            local camCF = Camera.CFrame
-            local targetPos = head.Position
-
-            local direction = (targetPos - camCF.Position).Unit
-            local lookVector = camCF.LookVector
-
-            local smoothDir = lookVector:Lerp(direction, settings.AimSmoothness)
-            Camera.CFrame = CFrame.new(camCF.Position, camCF.Position + smoothDir)
+        if humanoid then
+            humanoid.WalkSpeed = 16 -- default walk speed
         end
     end
-end
+end)
 
-local function shoot()
-    local now = tick()
-    if now - lastShotTime < settings.ShootInterval then return end
-    lastShotTime = now
-
-    -- Implement actual shooting action for your game here
-    print("[Action] Shoot triggered")
-end
-
-local function isLookingAt(player)
-    local mouseTarget = Mouse.Target
-    if not mouseTarget or not player.Character then return false end
-    return mouseTarget:IsDescendantOf(player.Character)
-end
-
-local function isAimingAt(player)
-    return isLookingAt(player)
-end
-
-local function performShootOnLookAim()
-    if not (enabledFeatures.ShootOnLook or enabledFeatures.ShootOnAim) then return end
-    if not isAlive(LocalPlayer) then return end
-
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and isAlive(player) then
-            if enabledFeatures.ShootOnLook and isLookingAt(player) then
-                shoot()
-                return
-            end
-            if enabledFeatures.ShootOnAim and isAimingAt(player) then
-                shoot()
-                return
+-- KillAura Implementation --
+local function killAura()
+    if not Settings.KillAura then return end
+    local character = LocalPlayer.Character
+    if not character then return end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") then
+            local targetHumanoid = plr.Character.Humanoid
+            if targetHumanoid.Health > 0 then
+                local dist = (plr.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
+                if dist < 10 then -- kill radius
+                    -- Simulate attack by setting target health to 0 (for testing only)
+                    targetHumanoid.Health = 0
+                end
             end
         end
     end
 end
 
-local function autoKill()
-    if not enabledFeatures.AutoKill then return end
-    if not isAlive(LocalPlayer) then return end
-
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and isAlive(player) then
-            print("[AutoKill] Attempting kill on "..player.Name)
-            -- Insert game specific kill logic here
-        end
-    end
-end
-
+-- Main loop
 RunService.RenderStepped:Connect(function()
-    if enabledFeatures.Aimbot then
-        aimbot()
+    -- ESP Update
+    if Settings.ESP then
+        espLoop()
+    else
+        -- Remove all ESP if disabled
+        for plr, _ in pairs(espObjects) do
+            removeESPForPlayer(plr)
+        end
     end
 
-    performShootOnLookAim()
-    autoKill()
-end)
+    -- Aimbot Update
+    if Settings.Aimbot then
+        aimbotStep()
+    end
 
--- Shortcut: Toggle GUI visibility with Right Control
-UserInputService.InputBegan:Connect(function(input, processed)
-    if processed then return end
-    if input.KeyCode == Enum.KeyCode.RightControl then
-        MainFrame.Visible = not MainFrame.Visible
+    -- Fly Update
+    if Settings.Fly then
+        if not flying then
+            startFly()
+        end
+    else
+        if flying then
+            stopFly()
+        end
+    end
+
+    -- KillAura Update
+    if Settings.KillAura then
+        killAura()
     end
 end)
 
-print("Script loaded. Press Right Control to toggle GUI visibility.")
+-- Toggle GUI with "Q" key
+User InputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.Q then
+        ScreenGui.Enabled = not ScreenGui.Enabled
+    end
+end)
+
+-- Initialization message
+print("GARENA Free Fire MAX Script loaded. Press 'Q' to toggle GUI visibility. Use GUI buttons to toggle features.")
+
+-- End of script
